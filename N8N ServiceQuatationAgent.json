@@ -1,0 +1,325 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Request a Quotation",
+        "formDescription": "Please describe your requirement and we will send you a quotation shortly.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Client Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Client Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Service"
+            },
+            {
+              "fieldLabel": "Project Details",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Deadline",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Budget",
+              "fieldType": "number",
+              "placeholder": "Your budget in USD (optional)"
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Submit"
+        }
+      },
+      "id": "019ed8d1-28ad-44d7-aaa7-b5c631f019a7",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "b4dd9a14-9452-4503-b4b8-870faba506ec"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2e4aebe1-ac49-4d80-940e-adfba65363b2",
+              "name": "Client Name",
+              "value": "={{ $json['Client Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "7ed43cdb-4bdf-4963-b475-5ad31df954b2",
+              "name": "Client Email",
+              "value": "={{ $json['Client Email'] }}",
+              "type": "string"
+            },
+            {
+              "id": "2c03d2e3-c725-4a8a-991f-7d50885e363d",
+              "name": "Service",
+              "value": "={{ $json.Service }}",
+              "type": "string"
+            },
+            {
+              "id": "01235e02-93c8-409c-a308-01ed46231a17",
+              "name": "Budget",
+              "value": "={{ $json.Budget }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69b7f6f4-52fe-4d6e-96ae-250388d6d6ac",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Client ki details:\nName: {{ $json['Client Name'] }}\nEmail: {{ $json['Client Email'] }}\nService: {{ $json.Service }}\nProject Description: {{ $('On form submission').item.json['Project Details'] }}\nBudget: {{ $json.Budget }}\nDeadline: {{ $('On form submission').item.json.Deadline }}\n\nIn details se aik professional service quotation draft likhein.",
+        "options": {
+          "systemMessage": "You are a professional business quotation writer.\nYou will be given a client's details. Write a clear, formal service quotation draft with these sections:\n\n1. Quotation Title and Date\n2. Client Details\n3. Project Summary (2-3 lines)\n4. Scope of Work (bullet points)\n5. Estimated Pricing (line items; stay within the client's budget if one is given)\n6. Timeline (based on the deadline)\n7. Terms and Conditions (payment terms, quotation valid for 15 days)\n8. Closing Note\n\nRules:\n- Write in English with a professional tone.\n- Output only the quotation, no extra explanation.\n- If the client did not provide some information, do not guess. Write \"To be confirmed\"."
+        }
+      },
+      "id": "fb1206fc-f4b1-4914-868f-e20bff82ecfc",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "50b49ac8-c9df-4950-8df2-389850478ada",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        208
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wf1rHGySzeP3k5jj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": "default",
+        "title": "=Quotation - {{ $('Edit Fields').item.json['Client Name'] }}"
+      },
+      "id": "12afb514-11b9-4cc1-a4b3-58f993cf11c8",
+      "name": "Create a document",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        800,
+        192
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "mwEYDMJVFTIxLtYA",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $('Create a document').item.json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $('AI Agent').item.json.output }}"
+            }
+          ]
+        }
+      },
+      "id": "1abefeb1-2058-428c-894a-9bba8542b283",
+      "name": "Update a document",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        816,
+        0
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "mwEYDMJVFTIxLtYA",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Edit Fields').item.json['Client Email'] }}",
+        "subject": "=Your Service Quotation - {{ $('Edit Fields').item.json['Client Name'] }}",
+        "emailType": "text",
+        "message": "=Dear {{ $('Edit Fields').item.json['Client Name'] }},\n\nThank you for your inquiry. Please find your service quotation attached as a PDF.\n\nIf you have any questions, feel free to reply to this email.\n\nBest regards,\n[Your Company Name]",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "d75ca2ee-7553-4f09-b252-a2639141cf3f",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        0
+      ],
+      "webhookId": "c0a06d7b-15a3-4395-8dc0-505b34571553",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "UxzxLcBtsWdU0EDG",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html_content": "=<html><body>{{ $('AI Agent').item.json.output.replace(/```html|```/g, '') }}</body></html>",
+        "css_content": "=body { font-family: Arial, sans-serif; font-size: 14px; color: #222; padding: 40px; line-height: 1.6; }\nh1 { font-size: 24px; color: #1a3c6e; }\nh2 { font-size: 16px; color: #1a3c6e; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 24px; }\ntable { width: 100%; border-collapse: collapse; margin-top: 8px; }\nth, td { border: 1px solid #ccc; padding: 8px; text-align: left; }\nth { background: #f0f4fa; }",
+        "output_format": "file"
+      },
+      "type": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "ece692c8-f290-4892-8892-e2aa9b2a297e",
+      "name": "Convert HTML to PDF",
+      "credentials": {
+        "htmlcsstopdfApi": {
+          "id": "QdUbFramotetbMDE",
+          "name": "HTML to PDF account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Convert HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "versionId": "d3410487-3788-430b-8499-17d6c77de44e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "15af82b129ef835ec7727289f4ecdfbbddce60277b527008a3f5b6271d2c0afd"
+  },
+  "nodeGroups": [],
+  "id": "242Ozzxfh90yak2t",
+  "tags": []
+}
